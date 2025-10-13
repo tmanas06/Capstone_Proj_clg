@@ -1,0 +1,20 @@
+{
+  "network": "localhost",
+  "chainId": "31337",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "timestamp": "2025-10-13T18:00:23.430Z",
+  "contracts": {
+    "TestnetToken": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+    "PlatformToken": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+    "FraudDetection": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+    "Web3JobPlatform": "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
+    "UserProfile": "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e"
+  },
+  "abis": {
+    "TestnetToken": "./artifacts/contracts/TestnetToken.sol/TestnetToken.json",
+    "PlatformToken": "./artifacts/contracts/PlatformToken.sol/PlatformToken.json",
+    "FraudDetection": "./artifacts/contracts/FraudDetection.sol/FraudDetection.json",
+    "Web3JobPlatform": "./artifacts/contracts/Web3JobPlatform.sol/Web3JobPlatform.json",
+    "UserProfile": "./artifacts/contracts/UserProfile.sol/UserProfile.json"
+  }
+}
