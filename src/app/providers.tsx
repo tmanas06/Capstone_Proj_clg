@@ -9,11 +9,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <Web3Provider>
       <Web3ContextProvider>
-        <ThemeProvider>
-          <NextThemesProvider attribute="class" defaultTheme="system" enableSystem>
+        <NextThemesProvider attribute="class" defaultTheme="light" enableSystem={false}>
+          <ThemeProvider>
             {children}
-          </NextThemesProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        </NextThemesProvider>
       </Web3ContextProvider>
     </Web3Provider>
   );

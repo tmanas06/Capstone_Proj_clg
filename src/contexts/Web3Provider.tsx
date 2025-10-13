@@ -30,7 +30,14 @@ const config = createConfig({
 });
 
 // Create query client
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 export function Web3Provider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -39,11 +46,25 @@ export function Web3Provider({ children }: { children: ReactNode }) {
   // Prevent hydration issues
   useEffect(() => {
     setMounted(true);
+    return () => setMounted(false);
   }, []);
 
   if (!mounted) {
     return null;
   }
+
+  // Configure RainbowKit theme based on Next.js theme
+  const rainbowKitTheme = theme === 'dark' 
+    ? darkTheme({
+        accentColor: '#7C3AED',
+        accentColorForeground: 'white',
+        borderRadius: 'medium',
+      })
+    : lightTheme({
+        accentColor: '#7C3AED',
+        accentColorForeground: 'white',
+        borderRadius: 'medium',
+      });
 
   return (
     <WagmiConfig config={config}>
