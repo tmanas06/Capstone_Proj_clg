@@ -1,11 +1,35 @@
 
 "use client";
+import { useEffect } from 'react';
 import { useAppStore } from '../../store';
 
 export default function MyEvents() {
   const events = useAppStore(s => s.events);
   const pastEvents = useAppStore(s => s.pastEvents);
   const deletePastEvent = useAppStore(s => s.deletePastEvent);
+  const createEvent = useAppStore(s => s.createEvent);
+
+  // Add dummy event on mount if no events exist
+  useEffect(() => {
+    if (events.length === 0 && pastEvents.length === 0) {
+      // Create a dummy upcoming event
+      const now = Date.now();
+      const startDate = new Date(now + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+      const endDate = new Date(now + 8 * 24 * 60 * 60 * 1000); // 8 days from now
+      
+      createEvent({
+        title: 'Web3 Developer Meetup 2025',
+        description: 'Join us for an exciting meetup featuring talks on blockchain development, DeFi protocols, and the future of Web3. Network with fellow developers, learn from industry experts, and explore the latest trends in decentralized technology.',
+        date: startDate.toLocaleDateString(),
+        location: 'San Francisco, CA - Tech Hub Conference Center',
+        hashtags: ['web3', 'blockchain', 'defi', 'ethereum', 'meetup'],
+        startMs: startDate.getTime(),
+        endMs: endDate.getTime(),
+      });
+      
+      console.log('✅ Dummy event created:', startDate.toLocaleString());
+    }
+  }, [events.length, pastEvents.length, createEvent]);
 
   return (
     <div className="space-y-8">

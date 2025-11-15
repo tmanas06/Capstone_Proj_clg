@@ -1,11 +1,75 @@
 "use client";
+import { useEffect } from "react";
 import { useAppStore } from "@/store";
 
 export default function Dashboard() {
   const shares = useAppStore(s => s.shares);
   const events = useAppStore(s => s.events);
+  const recordShare = useAppStore(s => s.recordShare);
+  const verifyShare = useAppStore(s => s.verifyShare);
   const byId = Object.fromEntries(events.map(e => [e.id, e] as const));
   const totalEarned = shares.filter(s => s.verified).reduce((n, s) => n + s.reward, 0);
+
+  // Add dummy share records if no shares exist
+  useEffect(() => {
+    if (shares.length === 0) {
+      // Get or create an event first
+      let event = events[0];
+      
+      // If no events exist, create a dummy event
+      if (!event) {
+        const createEventFn = useAppStore.getState().createEvent;
+        const now = Date.now();
+        const startDate = new Date(now + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+        const endDate = new Date(now + 8 * 24 * 60 * 60 * 1000); // 8 days from now
+        
+        event = createEventFn({
+          title: 'Web3 Developer Meetup 2025',
+          description: 'Join us for an exciting meetup featuring talks on blockchain development, DeFi protocols, and the future of Web3.',
+          date: startDate.toLocaleDateString(),
+          location: 'San Francisco, CA - Tech Hub Conference Center',
+          hashtags: ['web3', 'blockchain', 'defi', 'ethereum', 'meetup'],
+          startMs: startDate.getTime(),
+          endMs: endDate.getTime(),
+        });
+      }
+      
+      if (event) {
+        // Create dummy shares for the event
+        // Share 1: Twitter - Verified
+        const share1 = recordShare({
+          eventId: event.id,
+          platform: 'twitter',
+          url: 'https://twitter.com/user/status/1234567890',
+        });
+        // Verify it after a short delay
+        setTimeout(() => {
+          verifyShare(share1.id, 5.50); // 5.50 POSTMINT reward
+        }, 100);
+
+        // Share 2: LinkedIn - Verified
+        const share2 = recordShare({
+          eventId: event.id,
+          platform: 'linkedin',
+          url: 'https://linkedin.com/feed/update/1234567890',
+        });
+        setTimeout(() => {
+          verifyShare(share2.id, 7.25); // 7.25 POSTMINT reward
+        }, 200);
+
+        // Share 3: Twitter - Pending
+        setTimeout(() => {
+          recordShare({
+            eventId: event.id,
+            platform: 'twitter',
+            url: 'https://twitter.com/user/status/0987654321',
+          });
+        }, 300);
+
+        console.log('✅ Dummy shares created for dashboard');
+      }
+    }
+  }, [shares.length, events.length, recordShare, verifyShare]);
 
   return (
     <div className="w-full">
