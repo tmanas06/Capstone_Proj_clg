@@ -14,10 +14,10 @@ const Navbar = () => {
   
   const jobLinks = [
     { name: 'Home', href: '/' },
-    { name: 'Companies', href: '/companies' },
-    { name: 'Developers', href: '/developers' },
-    { name: 'Freelancers', href: '/freelancers' },
-    { name: 'Profile', href: '/profile' },
+    { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Jobs', href: '/dashboard/job-search' },
+    { name: 'KYC', href: '/auth/kyc-verification' },
+    { name: 'Post Job', href: '/employer/job-postings' },
   ];
   
   const eventLinks = [

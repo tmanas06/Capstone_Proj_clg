@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - FRAUD_DETECTION_SERVICE_URL=http://ai-service:5000
+      - ETHEREUM_RPC_URL=${ETHEREUM_RPC_URL:-http://localhost:8545}
+      - SELF_PROTOCOL_API_KEY=${SELF_PROTOCOL_API_KEY}
+    depends_on:
+      - ai-service
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3000/api
+      - NEXT_PUBLIC_SELF_API_KEY=${NEXT_PUBLIC_SELF_API_KEY}
+      - NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID=${NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID}
+    depends_on:
+      - backend
+    volumes:
+      - ./src:/app/src
+      - /app/node_modules
+      - /app/.next
+
+  ai-service:
+    build: ./ai-service
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./ai-service/models:/app/models
+      - ./ai-service/fraud_detection:/app/fraud_detection
+
+volumes:
+  mongo_data:
+
