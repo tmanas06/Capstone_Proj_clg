@@ -6,11 +6,11 @@ async function main() {
   console.log("Seeding dummy data with account:", deployer.address);
 
   // Contract addresses from latest deployment (updated after redeployment)
-  // Updated: 2025-11-15 - Latest deployment addresses
-  const USER_VERIFICATION = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853";
-  const COMPANY_VERIFICATION = "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6";
-  const CREDENTIAL_REGISTRY = "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318";
-  const JOB_POSTING = "0x610178dA211FEF7D417bC0e6FeD39F05609AD788";
+  // Updated: 2025-11-15 - Latest deployment with getJobDetails() function
+  const USER_VERIFICATION = "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44";
+  const COMPANY_VERIFICATION = "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f";
+  const CREDENTIAL_REGISTRY = "0x4A679253410272dd5232B3Ff7cF5dbB88f295319";
+  const JOB_POSTING = "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F";
 
   // Get contract instances
   const UserVerification = await ethers.getContractAt("UserVerification", USER_VERIFICATION);

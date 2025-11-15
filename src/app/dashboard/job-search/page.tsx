@@ -24,7 +24,7 @@ export default function JobSearch() {
   const [loading, setLoading] = useState(false);
   
   const { address } = useAccount();
-  const { jobPostingContract } = useContract();
+  const { jobPostingContract, userVerificationContract, signer, contractAddresses, contractABIs, executeTransaction } = useContract();
 
   useEffect(() => {
     // Fetch jobs when contract is available (doesn't require wallet for reads)
@@ -84,31 +84,98 @@ export default function JobSearch() {
       for (let jobId = 1; jobId <= totalJobs; jobId++) {
         try {
           console.log(`Fetching job ${jobId}...`);
-          // Access the public jobs mapping
-          const job = await jobPostingContract.jobs(jobId);
-          console.log(`Job ${jobId} data:`, job);
           
-          // Check if job exists (has a company address that's not zero)
-          if (job && job.companyAddress && job.companyAddress !== '0x0000000000000000000000000000000000000000') {
+          // Use the new getJobDetails() function which returns only the fields we need
+          // This avoids the overflow issue with large uint256 values
+          let jobDetails: any;
+          
+          try {
+            // Try the new getJobDetails function first (if contract has been updated)
+            jobDetails = await jobPostingContract.getJobDetails(jobId);
+          } catch (e: any) {
+            // If getJobDetails doesn't exist (old contract), fall back to jobs() method
+            if (e.message?.includes('getJobDetails') || e.message?.includes('not found')) {
+              console.log(`getJobDetails not available, using jobs() method...`);
+              // Fall back to the old method (will likely cause overflow)
+              const jobResult = await jobPostingContract.jobs(jobId);
+              // Extract only safe fields
+              jobDetails = {
+                companyAddress: jobResult.companyAddress,
+                positionTitle: jobResult.positionTitle,
+                description: jobResult.description,
+                requiredCredentials: jobResult.requiredCredentials || [],
+                minimumTrustScore: jobResult.minimumTrustScore
+              };
+            } else {
+              throw e;
+            }
+          }
+          
+          // Extract fields from jobDetails
+          const companyAddress = jobDetails.companyAddress || jobDetails[0];
+          const positionTitle = jobDetails.positionTitle || jobDetails[1];
+          const description = jobDetails.description || jobDetails[2];
+          const requiredCredentials = jobDetails.requiredCredentials || jobDetails[3] || [];
+          const minimumTrustScore = jobDetails.minimumTrustScore || jobDetails[4];
+          
+          // Convert minimumTrustScore safely (uint8 - always safe)
+          let minTrustScore = 0;
+          if (minimumTrustScore !== undefined && minimumTrustScore !== null) {
+            try {
+              if (typeof minimumTrustScore === 'object' && 'toNumber' in minimumTrustScore) {
+                minTrustScore = minimumTrustScore.toNumber();
+              } else if (typeof minimumTrustScore === 'number') {
+                minTrustScore = minimumTrustScore;
+              } else {
+                const parsed = parseInt(String(minimumTrustScore), 10);
+                if (!isNaN(parsed)) {
+                  minTrustScore = parsed;
+                }
+              }
+            } catch (e) {
+              minTrustScore = 0;
+            }
+          }
+          
+          // Convert credentials
+          const credentials: string[] = [];
+          if (requiredCredentials && Array.isArray(requiredCredentials)) {
+            requiredCredentials.forEach((cred: any) => {
+              if (typeof cred === 'string') {
+                credentials.push(cred);
+              } else if (cred) {
+                credentials.push(String(cred));
+              }
+            });
+          }
+          
+          // Check if job exists and add it
+          if (companyAddress && companyAddress !== '0x0000000000000000000000000000000000000000') {
             jobsData.push({
               jobId: jobId.toString(),
-              company: job.companyAddress,
-              title: job.positionTitle || `Job #${jobId}`,
-              description: job.description || 'No description available',
-              minTrustScore: job.minimumTrustScore || 0,
-              requiredCredentials: job.requiredCredentials || [],
+              company: companyAddress,
+              title: positionTitle || `Job #${jobId}`,
+              description: description || 'No description available',
+              minTrustScore: minTrustScore,
+              requiredCredentials: credentials,
             });
-            console.log(`✓ Job ${jobId} added: ${job.positionTitle}`);
+            console.log(`✓ Job ${jobId} added: ${positionTitle || `Job #${jobId}`}`);
           } else {
             console.log(`Job ${jobId} has invalid company address`);
           }
         } catch (e: any) {
-          // Job doesn't exist or error accessing it
-          console.log(`Job ${jobId} error:`, e.message || e);
-          // If we get a revert, likely no more jobs
-          if (e.message?.includes('revert') || e.code === 'CALL_EXCEPTION') {
-            console.log('No more jobs found, stopping...');
-            break;
+          // Handle errors
+          if (e.code === 'NUMERIC_FAULT' && e.fault === 'overflow') {
+            console.warn(`⚠️ Job ${jobId}: Overflow error - contract needs to be updated with getJobDetails()`);
+            console.warn(`   Please redeploy contract with the new getJobDetails() function`);
+            // Skip this job
+          } else {
+            console.log(`Job ${jobId} error:`, e.message || e);
+            // If we get a revert, likely no more jobs
+            if (e.message?.includes('revert') || e.code === 'CALL_EXCEPTION') {
+              console.log('No more jobs found, stopping...');
+              break;
+            }
           }
         }
       }
@@ -137,27 +204,73 @@ export default function JobSearch() {
 
   const handleApplyJob = async (jobId: string) => {
     if (!address) {
-      alert('Please connect your wallet');
+      alert('Please connect your wallet to apply for jobs');
       return;
     }
 
-    try {
-      if (!jobPostingContract) {
-        throw new Error('Contract not initialized');
-      }
+    if (!signer) {
+      alert('Wallet signer not available. Please ensure your wallet is connected and on the correct network (Localhost).');
+      return;
+    }
 
-      const tx = await jobPostingContract.applyForJob(
-        jobId,
-        '', // coverLetter IPFS hash
-        [] // submittedCredentials
+    if (!contractAddresses?.jobPosting || !contractABIs?.jobPosting) {
+      alert('Contract not initialized. Please refresh the page.');
+      return;
+    }
+
+    // Check KYC status before applying
+    try {
+      if (userVerificationContract) {
+        const [kycComplete] = await userVerificationContract.getVerificationStatus(address);
+        if (!kycComplete) {
+          const proceed = confirm(
+            'KYC verification required to apply for jobs.\n\n' +
+            'Would you like to complete KYC now?\n' +
+            '(Click OK to go to KYC page, Cancel to use a different account)'
+          );
+          if (proceed) {
+            window.location.href = '/auth/kyc-verification';
+          }
+          return;
+        }
+      }
+    } catch (kycError: any) {
+      console.warn('Could not check KYC status:', kycError);
+      // Continue anyway - let the contract revert if needed
+    }
+
+    try {
+      console.log('Applying for job:', jobId);
+      console.log('Using signer:', signer);
+      
+      // Use executeTransaction helper which creates a contract with signer
+      const receipt = await executeTransaction(
+        contractAddresses.jobPosting,
+        contractABIs.jobPosting,
+        'applyForJob',
+        [
+          parseInt(jobId, 10), // Convert string to number
+          '', // coverLetter IPFS hash
+          [] // submittedCredentials
+        ],
+        (receipt) => {
+          console.log('Application successful!', receipt);
+          alert('Application submitted successfully!');
+          fetchJobs(); // Refresh job list
+        },
+        (error) => {
+          console.error('Application failed:', error);
+          alert('Failed to submit application: ' + error.message);
+        }
       );
       
-      await tx.wait();
-      alert('Application submitted successfully!');
-      fetchJobs(); // Refresh
+      if (!receipt) {
+        // Error already handled in onError callback
+        return;
+      }
     } catch (error: any) {
-      console.error('Application failed:', error);
-      alert('Failed to submit application: ' + error.message);
+      console.error('Application error:', error);
+      alert('Failed to submit application: ' + (error.message || 'Unknown error'));
     }
   };
 

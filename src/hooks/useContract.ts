@@ -7,11 +7,11 @@ import { ethers } from 'ethers';
 // Contract addresses - from deployment file or environment variables
 // Fallback to latest deployed addresses (updated after redeployment)
 const CONTRACT_ADDRESSES = {
-  userVerification: process.env.NEXT_PUBLIC_USER_VERIFICATION_ADDRESS || '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
-  companyVerification: process.env.NEXT_PUBLIC_COMPANY_VERIFICATION_ADDRESS || '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
-  credentialRegistry: process.env.NEXT_PUBLIC_CREDENTIAL_REGISTRY_ADDRESS || '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318',
-  jobPosting: process.env.NEXT_PUBLIC_JOB_POSTING_ADDRESS || '0x610178dA211FEF7D417bC0e6FeD39F05609AD788',
-  disputeResolution: process.env.NEXT_PUBLIC_DISPUTE_RESOLUTION_ADDRESS || '0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e',
+  userVerification: process.env.NEXT_PUBLIC_USER_VERIFICATION_ADDRESS || '0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44',
+  companyVerification: process.env.NEXT_PUBLIC_COMPANY_VERIFICATION_ADDRESS || '0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f',
+  credentialRegistry: process.env.NEXT_PUBLIC_CREDENTIAL_REGISTRY_ADDRESS || '0x4A679253410272dd5232B3Ff7cF5dbB88f295319',
+  jobPosting: process.env.NEXT_PUBLIC_JOB_POSTING_ADDRESS || '0x7a2088a1bFc9d81c55368AE168C2C02570cB814F',
+  disputeResolution: process.env.NEXT_PUBLIC_DISPUTE_RESOLUTION_ADDRESS || '0x09635F643e140090A9A8Dcd712eD6285858ceBef',
 };
 
 // Log contract addresses for debugging (only in browser)
@@ -52,6 +52,7 @@ const JOB_POSTING_ABI = [
   "function getJobApplications(uint256 _jobId) view returns (address[])",
   "function getCompanyActiveJobs(address _company) view returns (uint256[])",
   "function getTotalJobs() view returns (uint256)",
+  "function getJobDetails(uint256 _jobId) view returns (address companyAddress, string memory positionTitle, string memory description, bytes32[] memory requiredCredentials, uint8 minimumTrustScore)",
   "function completeHire(uint256 _jobId, address _candidate)",
   "function jobs(uint256) view returns (uint256 jobId, address companyAddress, string memory positionTitle, string memory description, bytes32[] memory requiredCredentials, uint8 minimumTrustScore, uint256 createdTime, address[] memory applications, address hireAddress, uint8 status)",
 ];
@@ -216,7 +217,7 @@ export const useContract = () => {
       credentialRegistry: CREDENTIAL_REGISTRY_ABI,
       jobPosting: JOB_POSTING_ABI,
       disputeResolution: DISPUTE_RESOLUTION_ABI,
-    },
+    } as const,
     
     // Utilities
     executeTransaction,

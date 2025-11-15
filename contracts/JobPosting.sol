@@ -440,5 +440,28 @@ contract JobPosting is AccessControl, Pausable, ReentrancyGuard {
     function getTotalJobs() external view returns (uint256) {
         return _jobIds.current();
     }
+
+    /**
+     * @dev Get job details for frontend (returns only displayable fields, avoids large uint256)
+     * This function is specifically designed to avoid BigNumber overflow issues in frontend
+     */
+    function getJobDetails(uint256 _jobId) external view returns (
+        address companyAddress,
+        string memory positionTitle,
+        string memory description,
+        bytes32[] memory requiredCredentials,
+        uint8 minimumTrustScore
+    ) {
+        require(_jobId > 0 && _jobId <= _jobIds.current(), "Invalid job ID");
+        JobListing storage job = jobs[_jobId];
+        
+        return (
+            job.companyAddress,
+            job.positionTitle,
+            job.description,
+            job.requiredCredentials,
+            job.minimumTrustScore
+        );
+    }
 }
 

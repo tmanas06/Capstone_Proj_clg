@@ -94,28 +94,76 @@ export default function Dashboard() {
           for (let i = 1; i <= maxJobs; i++) {
             try {
               console.log(`Fetching job ${i}...`);
-              const job = await jobPostingContract.jobs(i);
-              console.log(`Job ${i} data:`, job);
+              
+              // Use getJobDetails() if available, otherwise fall back to jobs()
+              let jobDetails: any;
+              try {
+                jobDetails = await jobPostingContract.getJobDetails(i);
+              } catch (e: any) {
+                // Fall back to jobs() if getJobDetails doesn't exist
+                if (e.message?.includes('getJobDetails') || e.message?.includes('not found')) {
+                  const job = await jobPostingContract.jobs(i);
+                  jobDetails = {
+                    companyAddress: job.companyAddress,
+                    positionTitle: job.positionTitle,
+                    description: job.description,
+                    requiredCredentials: job.requiredCredentials || [],
+                    minimumTrustScore: job.minimumTrustScore
+                  };
+                } else {
+                  throw e;
+                }
+              }
+              
+              // Extract fields
+              const companyAddress = jobDetails.companyAddress || jobDetails[0];
+              const positionTitle = jobDetails.positionTitle || jobDetails[1];
+              const minimumTrustScore = jobDetails.minimumTrustScore || jobDetails[4];
               
               // Check if job exists
-              if (job && job.companyAddress && job.companyAddress !== '0x0000000000000000000000000000000000000000') {
+              if (companyAddress && companyAddress !== '0x0000000000000000000000000000000000000000') {
+                // Convert minimumTrustScore safely
+                let minTrustScore = 0;
+                try {
+                  if (minimumTrustScore !== undefined && minimumTrustScore !== null) {
+                    if (typeof minimumTrustScore === 'object' && 'toNumber' in minimumTrustScore) {
+                      minTrustScore = minimumTrustScore.toNumber();
+                    } else if (typeof minimumTrustScore === 'number') {
+                      minTrustScore = minimumTrustScore;
+                    } else {
+                      const parsed = parseInt(String(minimumTrustScore), 10);
+                      if (!isNaN(parsed)) {
+                        minTrustScore = parsed;
+                      }
+                    }
+                  }
+                } catch (e: any) {
+                  console.warn(`Could not convert minTrustScore for job ${i}:`, e.message);
+                  minTrustScore = 0;
+                }
+
                 jobsData.push({
                   jobId: i.toString(),
-                  title: job.positionTitle || `Job #${i}`,
-                  company: job.companyAddress,
-                  minTrustScore: job.minimumTrustScore || 0,
-                  status: job.status === 0 ? 'Active' : job.status === 1 ? 'Closed' : job.status === 2 ? 'Filled' : 'Cancelled',
+                  title: positionTitle || `Job #${i}`,
+                  company: companyAddress,
+                  minTrustScore: minTrustScore,
+                  status: 'Active', // Default status since getJobDetails doesn't return it
                 });
-                console.log(`Job ${i} added:`, job.positionTitle);
+                console.log(`Job ${i} added:`, positionTitle || `Job #${i}`);
               } else {
                 console.log(`Job ${i} has invalid company address`);
               }
             } catch (e: any) {
-              // Skip if job doesn't exist
-              console.log(`Job ${i} not found:`, e.message);
-              // If we get a revert, likely no more jobs
-              if (e.message?.includes('revert') || e.code === 'CALL_EXCEPTION') {
-                break;
+              // Handle errors
+              if (e.code === 'NUMERIC_FAULT' && e.fault === 'overflow') {
+                console.warn(`⚠️ Job ${i}: Overflow - contract needs getJobDetails() function`);
+                // Skip this job
+              } else {
+                console.log(`Job ${i} not found:`, e.message);
+                // If we get a revert, likely no more jobs
+                if (e.message?.includes('revert') || e.code === 'CALL_EXCEPTION') {
+                  break;
+                }
               }
             }
           }
